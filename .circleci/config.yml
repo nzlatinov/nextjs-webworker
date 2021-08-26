@@ -1,28 +1,46 @@
 version: 2.1
 
+# jobs:
+#   test:
+#     docker:
+#       - image: cimg/node:15.1
+#     steps:
+#       - checkout
+#       - restore_cache:
+#           # See the configuration reference documentation for more details on using restore_cache and save_cache steps
+#           # https://circleci.com/docs/2.0/configuration-reference/?section=reference#save_cache
+#           keys:
+#             - node-deps-v1-{{ .Branch }}-{{checksum "package-lock.json"}}
+#       - run:
+#           name: install packages
+#           command: npm ci
+#       - save_cache:
+#           key: node-deps-v1-{{ .Branch }}-{{checksum "package-lock.json"}}
+#           paths:
+#             - ~/.npm
+#       - run:
+#           name: Run Tests
+#           command: npm run test
+
+# workflows:
+#   orb-free-workflow:
+#     jobs:
+#       - test
+
 jobs:
-  test:
-    docker:
-      - image: cimg/node:15.1
+  build_deploy:
+    machine:
+      image: ubuntu-2004:202010-01
     steps:
       - checkout
-      - restore_cache:
-          # See the configuration reference documentation for more details on using restore_cache and save_cache steps
-          # https://circleci.com/docs/2.0/configuration-reference/?section=reference#save_cache
-          keys:
-            - node-deps-v1-{{ .Branch }}-{{checksum "package-lock.json"}}
       - run:
-          name: install packages
-          command: npm ci
-      - save_cache:
-          key: node-deps-v1-{{ .Branch }}-{{checksum "package-lock.json"}}
-          paths:
-            - ~/.npm
-      - run:
-          name: Run Tests
-          command: npm run test
+          name: Installing AWS CLI
+          command: sudo apt-get update && sudo apt install python3-pip && sudo pip3 install awsebcli --upgrade
+      - run: npm install && npm run build
+      - run: aws s3 sync .next s3://nextjs-webworker
 
 workflows:
-  orb-free-workflow:
+  version: 2
+  execute_bulk:
     jobs:
-      - test
+      - build_deploy
